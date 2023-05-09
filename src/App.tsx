@@ -4,6 +4,7 @@ import { WebContainer } from '@webcontainer/api'
 import { files } from './files'
 import { useState, useEffect, useRef, SetStateAction } from 'react'
 import { Terminal } from 'xterm'
+import Editor from '@monaco-editor/react'
 
 // let webContainerInstance: WebContainer
 
@@ -18,8 +19,11 @@ export const App = () => {
 
         const terminal = new Terminal({
             convertEol: true,
+            cursorBlink: false,
         })
         terminal.open(terminalRef.current as HTMLDivElement)
+
+        terminal.writeln('Booting WebContainer...')
 
         bootContainer()
             .then(() => {
@@ -65,7 +69,10 @@ export const App = () => {
         startProcess?.output.pipeTo(
             new WritableStream({
                 write(data) {
-                    terminal.write(data)
+                    // pipe terminal output but remove keyboard instructions to restart, etc
+                    // only doing this because currently not giving access to manually start tests
+                    // from terminal
+                    terminal.write(data.split('Watch Usage')[0])
                 },
             })
         )
@@ -87,19 +94,32 @@ export const App = () => {
     return (
         <div className="container">
             <div className="editor">
-                <textarea
-                    id="file"
-                    value={fileValue}
-                    onChange={(e) =>
-                        handleFileInput('index.js', e.currentTarget.value, setFileValue)
-                    }
-                />
-                <textarea
-                    id="test"
+                {}
+                <div style={{ marginBottom: '10px' }}>
+                    <Editor
+                        height="40vh"
+                        language="javascript"
+                        value={fileValue}
+                        onChange={(value = '') => handleFileInput('index.js', value, setFileValue)}
+                        theme="vs-dark"
+                        options={{
+                            minimap: {
+                                enabled: false,
+                            },
+                        }}
+                    />
+                </div>
+                <Editor
+                    height="40vh"
+                    language="javascript"
                     value={testValue}
-                    onChange={(e) =>
-                        handleFileInput('index.test.js', e.currentTarget.value, setTestValue)
-                    }
+                    onChange={(value = '') => handleFileInput('index.test.js', value, setTestValue)}
+                    theme="vs-dark"
+                    options={{
+                        minimap: {
+                            enabled: false,
+                        },
+                    }}
                 />
             </div>
             <div className="preview">
