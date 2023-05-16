@@ -128,7 +128,7 @@ export const App = () => {
         window.alert('copied URL to clipboard')
     }
 
-    const handleEditorWillMount = (editor, monaco: Monaco) => {
+    const handleEditorWillMount = (editor: any, monaco: Monaco) => {
         console.log('mounted...')
         monaco?.languages.typescript.javascriptDefaults.setEagerModelSync(true)
         editorRef.current = editor
@@ -139,20 +139,34 @@ export const App = () => {
             // allowJs: true,
             // module: 2,
             moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-            module: monaco.languages.typescript.ModuleKind.CommonJS,
+            module: monaco.languages.typescript.ModuleKind.ESNext,
             checkJs: true,
             types: ['jest'],
         })
+
+        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
+        //     `{
+        //   "compilerOptions": {
+        //     "allowJs": true,
+        //     "types": ["jest"]
+        //   },
+        // }`,
+        //     'tsconfig.json'
+        // )
+
+        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
+        //     `/// <reference path="../node_modules/@types/jest/index.d.ts" />`,
+        //     'index.d.ts'
+        // )
+
         //         monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //             `
-        //               {
+        //             `{
         //     "typeAcquisition": {
         //         "include": [
         //             "jest"
         //         ]
         //     }
-        // }
-        //             `,
+        // }`,
         //             'jsconfig.json'
         //         )
     }
@@ -273,49 +287,49 @@ export const App = () => {
     )
 }
 
-const FileEditor = ({
-    value,
-    onChange,
-    isContainerReady,
-}: {
-    value: any
-    onChange: any
-    isContainerReady: boolean
-}) => {
-    // const editorRef = useRef(null)
+// const FileEditor = ({
+//     value,
+//     onChange,
+//     isContainerReady,
+// }: {
+//     value: any
+//     onChange: any
+//     isContainerReady: boolean
+// }) => {
+//     // const editorRef = useRef(null)
 
-    const handleEditorWillMount = (monaco: Monaco) => {
-        console.log('mounted...')
-        // editorRef.current = editor
-        monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-            target: monaco.languages.typescript.ScriptTarget.ES2016,
-            allowNonTsExtensions: true,
-            allowJs: true,
-            module: 2,
-        })
-        //monaco.languages.typescript.javascriptDefaults.addExtraLib('@jest/types')
-    }
+//     const handleEditorWillMount = (monaco: Monaco) => {
+//         console.log('mounted...')
+//         // editorRef.current = editor
+//         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
+//             target: monaco.languages.typescript.ScriptTarget.ES2016,
+//             allowNonTsExtensions: true,
+//             allowJs: true,
+//             module: 2,
+//         })
+//         //monaco.languages.typescript.javascriptDefaults.addExtraLib('@jest/types')
+//     }
 
-    if (!isContainerReady) {
-        return <div>Loading...</div>
-    }
-    return (
-        <Editor
-            defaultLanguage="typescript"
-            value={value}
-            onChange={onChange}
-            theme="vs-dark"
-            // path={file.name}
-            options={{
-                minimap: {
-                    enabled: false,
-                },
-            }}
-            className="h-100"
-            beforeMount={handleEditorWillMount}
-        />
-    )
-}
+//     if (!isContainerReady) {
+//         return <div>Loading...</div>
+//     }
+//     return (
+//         <Editor
+//             defaultLanguage="typescript"
+//             value={value}
+//             onChange={onChange}
+//             theme="vs-dark"
+//             // path={file.name}
+//             options={{
+//                 minimap: {
+//                     enabled: false,
+//                 },
+//             }}
+//             className="h-100"
+//             beforeMount={handleEditorWillMount}
+//         />
+//     )
+// }
 
 // const TestEditor = ({ value }) => {
 //     return (

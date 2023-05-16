@@ -87,7 +87,7 @@ test('Returns my cat', async () => {
 }`,
         },
     },
-    'jsconfig.json': {
+    'disabledjsconfig.json': {
         file: {
             contents: `{
     "typeAcquisition": {
