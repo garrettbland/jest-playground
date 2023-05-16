@@ -7,16 +7,21 @@ import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import Editor, { Monaco } from '@monaco-editor/react'
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
-
+import JestType from './jest-type'
 // let webContainerInstance: WebContainer
 
-const INDEX_FILE = 'app.js'
-const TEST_FILE = 'app.test.js'
+const FILES = {
+    'app.js': files.src.directory['app.js'].file.contents,
+    'app.test.js': files.src.directory['app.test.js'].file.contents,
+    'types.d.ts': JestType,
+}
 
 export const App = () => {
-    const [fileValue, setFileValue] = useState(files.src.directory[INDEX_FILE].file.contents)
-    const [testValue, setTestValue] = useState(files.src.directory[TEST_FILE].file.contents)
-    const [currentTab, setCurrentTab] = useState<'app.js' | 'app.test.js'>('app.js')
+    const [fileName, setFileName] = useState<keyof typeof FILES>('types.d.ts')
+    const file = FILES[fileName]
+    // const [fileValue, setFileValue] = useState(files.src.directory[INDEX_FILE].file.contents)
+    // const [testValue, setTestValue] = useState(files.src.directory[TEST_FILE].file.contents)
+    // const [currentTab, setCurrentTab] = useState<keyof typeof FILES>('app.js')
     const webContainerInstance = useRef<WebContainer>()
     const terminalRef = useRef<HTMLDivElement>(null)
     const [isContainerReady, setContainerReady] = useState(false)
@@ -48,24 +53,35 @@ export const App = () => {
                 }
 
                 startDevServer(terminal)
+                /**
+                 * Initially set typescript file to register types
+                 * then switch to
+                 */
+                setFileName('app.js')
                 setContainerReady(true)
             })
             .catch((err) => console.log(err))
     }, [])
 
     useEffect(() => {
+        if (!isContainerReady) {
+            return
+        }
+
         const params = new URLSearchParams(window.location.search)
         if (params.has('file') || params.has('test')) {
-            setFileValue(
+            handleFileInput(
+                'app.js',
                 decompressFromEncodedURIComponent(params.get('file') ?? '') ??
                     '// Something went wrong parsing file contents from URL'
             )
-            setTestValue(
+            handleFileInput(
+                'app.test.js',
                 decompressFromEncodedURIComponent(params.get('test') ?? '') ??
                     '// Something went wrong parsing test file contents from URL'
             )
         }
-    }, [])
+    }, [isContainerReady])
 
     const bootContainer = async () => {
         webContainerInstance.current = await WebContainer.boot()
@@ -111,12 +127,7 @@ export const App = () => {
         await webContainerInstance.current?.fs.writeFile(fileName, content)
     }
 
-    const handleFileInput = async (
-        fileName: string,
-        content: string,
-        updater: React.Dispatch<SetStateAction<string>>
-    ) => {
-        updater(content)
+    const handleFileInput = async (fileName: string, content: string) => {
         writeFile(`src/${fileName}`, content)
     }
 
@@ -155,8 +166,18 @@ export const App = () => {
         // )
 
         // monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //     `/// <reference path="../node_modules/@types/jest/index.d.ts" />`,
-        //     'index.d.ts'
+        //     `declare const garrett: () => boolean;`,
+        //     'types.d.ts'
+        // )
+
+        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
+        //     `{
+        //               "compilerOptions": {
+        //                 "allowJs": true,
+        //                 "types": ["jest"]
+        //               }
+        //             }`,
+        //     'tsconfig.json'
         // )
 
         //         monaco.languages.typescript.javascriptDefaults.addExtraLib(
@@ -176,7 +197,7 @@ export const App = () => {
             <nav className="flex items-center justify-between py-2 px-4">
                 <div className="">Jest Playground</div>
                 <button
-                    onClick={() => handleShare(fileValue, testValue)}
+                    onClick={() => handleShare(FILES['app.js'], FILES['app.test.js'])}
                     className="bg-blue-500 hover:bg-blue-600 rounded px-2 py-1 text-white"
                 >
                     Share
@@ -185,47 +206,38 @@ export const App = () => {
             <div className="flex flex-row space-x-4">
                 <div className="flex flex-col w-1/2">
                     <div className="flex flex-row">
-                        <button
-                            onClick={() => setCurrentTab(INDEX_FILE)}
-                            className={`px-3 py-1 ${
-                                currentTab === INDEX_FILE ? 'text-blue-500' : ''
-                            }`}
-                        >
-                            index.ts
-                        </button>
-                        <button
-                            onClick={() => setCurrentTab(TEST_FILE)}
-                            className={`px-3 py-1 ${
-                                currentTab === TEST_FILE ? 'text-blue-500' : ''
-                            }`}
-                        >
-                            index.test.ts
-                        </button>
+                        {Object.entries(FILES).map(([name]) => {
+                            if (name === 'types.d.ts') return null
+                            return (
+                                <button
+                                    onClick={() => setFileName(name as any)}
+                                    className={`px-3 py-1 ${
+                                        fileName === name ? 'text-blue-500' : ''
+                                    }`}
+                                >
+                                    {name}
+                                </button>
+                            )
+                        })}
                     </div>
                     <div className="bg-red-100 flex-1">
                         <div className="h-full">
-                            {isContainerReady && (
-                                <Editor
-                                    defaultLanguage="typescript"
-                                    defaultValue={currentTab === INDEX_FILE ? fileValue : testValue}
-                                    onChange={(value) =>
-                                        handleFileInput(
-                                            currentTab === INDEX_FILE ? INDEX_FILE : TEST_FILE,
-                                            value ?? '',
-                                            currentTab === INDEX_FILE ? setFileValue : setTestValue
-                                        )
-                                    }
-                                    path={currentTab === INDEX_FILE ? INDEX_FILE : TEST_FILE}
-                                    theme="vs-dark"
-                                    options={{
-                                        minimap: {
-                                            enabled: false,
-                                        },
-                                    }}
-                                    className="h-100"
-                                    onMount={handleEditorWillMount}
-                                />
-                            )}
+                            <Editor
+                                defaultLanguage="typescript"
+                                defaultValue={file}
+                                onChange={(value) => handleFileInput(fileName, value ?? '')}
+                                path={fileName}
+                                theme="vs-dark"
+                                options={{
+                                    minimap: {
+                                        enabled: false,
+                                    },
+                                }}
+                                className={`h-100 ${
+                                    isContainerReady ? 'opacity-100' : 'opacity-0'
+                                }`}
+                                onMount={handleEditorWillMount}
+                            />
                         </div>
                         {/* <div className={currentTab === INDEX_FILE ? 'h-full' : 'hidden'}>
                             <FileEditor

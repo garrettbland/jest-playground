@@ -30,16 +30,10 @@ test('Returns my cat', async () => {
     },
     '.babelrc': {
         file: {
-            contents: `
-{
-  presets: [
-    ['@babel/preset-env', {
-      targets: {
-        node: 'current'
-      }
-    }]
-  ]
-}`,
+            contents: `{
+  "presets": [["@babel/preset-env", { "targets": { "node": "current" } }]]
+}
+`,
         },
     },
     //     'jest.config.js': {
@@ -87,15 +81,11 @@ test('Returns my cat', async () => {
 }`,
         },
     },
-    'disabledjsconfig.json': {
+    'types.d.ts': {
         file: {
-            contents: `{
-    "typeAcquisition": {
-        "include": [
-            "jest"
-        ]
-    }
-}`,
+            contents: `
+        declare const garrett: () => boolean;
+        `,
         },
     },
 }
