@@ -8,16 +8,17 @@ import { FitAddon } from 'xterm-addon-fit'
 import Editor, { Monaco } from '@monaco-editor/react'
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import JestType from './jest-type'
+import JestAlt from './jest-type-alt'
 // let webContainerInstance: WebContainer
 
 const FILES = {
     'app.js': files.src.directory['app.js'].file.contents,
     'app.test.js': files.src.directory['app.test.js'].file.contents,
-    'types.d.ts': JestType,
+    // 'types.d.ts': JestType,
 }
 
 export const App = () => {
-    const [fileName, setFileName] = useState<keyof typeof FILES>('types.d.ts')
+    const [fileName, setFileName] = useState<keyof typeof FILES>('app.js')
     const file = FILES[fileName]
     // const [fileValue, setFileValue] = useState(files.src.directory[INDEX_FILE].file.contents)
     // const [testValue, setTestValue] = useState(files.src.directory[TEST_FILE].file.contents)
@@ -142,6 +143,11 @@ export const App = () => {
     const handleEditorWillMount = (editor: any, monaco: Monaco) => {
         console.log('mounted...')
         monaco?.languages.typescript.javascriptDefaults.setEagerModelSync(true)
+        monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
+            noSemanticValidation: true,
+            noSyntaxValidation: false,
+        })
+
         editorRef.current = editor
         // editorRef.current = editor
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -151,18 +157,22 @@ export const App = () => {
             // module: 2,
             moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
             module: monaco.languages.typescript.ModuleKind.ESNext,
-            checkJs: true,
-            types: ['jest'],
+            // checkJs: true,
+            // types: ['jest'],
         })
 
+        // THIS WORKS
+        monaco.editor.createModel(JestType, 'typescript', monaco.Uri.parse('./types.d.ts'))
+
+        // monaco.editor.createModel(
+        //     `export * from '@types/jest'`,
+        //     'typescript',
+        //     monaco.Uri.parse('./types.d.ts')
+        // )
+
         // monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //     `{
-        //   "compilerOptions": {
-        //     "allowJs": true,
-        //     "types": ["jest"]
-        //   },
-        // }`,
-        //     'tsconfig.json'
+        //     'declare const garrett: () => boolean;',
+        //     'types.d.ts'
         // )
 
         // monaco.languages.typescript.javascriptDefaults.addExtraLib(
