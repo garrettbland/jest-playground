@@ -8,6 +8,8 @@ import { FitAddon } from 'xterm-addon-fit'
 import Editor, { Monaco } from '@monaco-editor/react'
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import JestType from './jest-type'
+import { tokenColors } from './cobalt-tokens.json'
+import { colors } from './cobalt-colors.json'
 
 const FILES = {
     'app.js': files.src.directory['app.js'].file.contents,
@@ -54,7 +56,7 @@ export const App = () => {
                  * Initially set typescript file to register types
                  * then switch to
                  */
-                setFileName('app.js')
+
                 setContainerReady(true)
             })
             .catch((err) => console.log(err))
@@ -140,14 +142,27 @@ export const App = () => {
         window.alert('copied URL to clipboard')
     }
 
-    const handleEditorWillMount = (editor: any, monaco: Monaco) => {
+    const handleBeforeMount = (monaco: Monaco) => {
+        monaco.editor.defineTheme('cobalt2', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: tokenColors.map((item) => ({
+                token: item.scope[0],
+                foreground: item.settings.foreground,
+                fontStyle: item.settings.fontStyle,
+            })),
+            colors: colors,
+        })
+    }
+
+    const handleOnEditorMount = (editor: any, monaco: Monaco) => {
         console.log('mounted...')
 
         editorRef.current = editor
 
         monaco?.languages.typescript.javascriptDefaults.setEagerModelSync(true)
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
-            noSemanticValidation: true,
+            noSemanticValidation: false,
             noSyntaxValidation: false,
         })
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
@@ -173,7 +188,7 @@ export const App = () => {
                 </button>
             </nav>
             <div className="flex flex-row space-x-4">
-                <div className="flex flex-col w-1/2">
+                <div className="flex flex-col w-1/2 bg-gray-800">
                     <div className="flex flex-row">
                         {Object.entries(FILES).map(([name]) => {
                             if (name === 'types.d.ts') return null
@@ -181,7 +196,9 @@ export const App = () => {
                                 <button
                                     onClick={() => setFileName(name as any)}
                                     className={`px-3 py-1 ${
-                                        fileName === name ? 'text-blue-500' : ''
+                                        fileName === name
+                                            ? 'bg-[#193549] text-blue-500 border-b border-blue-400 text-blue-50'
+                                            : 'text-blue-400'
                                     }`}
                                 >
                                     {name}
@@ -196,16 +213,26 @@ export const App = () => {
                                 defaultValue={file}
                                 onChange={(value) => handleFileInput(fileName, value ?? '')}
                                 path={fileName}
-                                theme="vs-dark"
+                                theme="cobalt2"
                                 options={{
                                     minimap: {
                                         enabled: false,
                                     },
+                                    fontSize: 14.5,
+                                    tabSize: 2,
+                                    lineHeight: 2.1,
+                                    letterSpacing: 0.6,
+                                    scrollbar: {
+                                        verticalScrollbarSize: 0,
+                                    },
+                                    fontLigatures: true,
+                                    fontFamily: 'Fira Code, monospace',
+
+                                    // rulers: [1],
                                 }}
-                                className={`h-100 ${
-                                    isContainerReady ? 'opacity-100' : 'opacity-0'
-                                }`}
-                                onMount={handleEditorWillMount}
+                                className={'h-100 bg-[#193549]'}
+                                onMount={handleOnEditorMount}
+                                beforeMount={handleBeforeMount}
                             />
                         </div>
                         {/* <div className={currentTab === INDEX_FILE ? 'h-full' : 'hidden'}>
