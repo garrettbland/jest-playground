@@ -2,31 +2,27 @@
 import 'xterm/css/xterm.css'
 import { WebContainer } from '@webcontainer/api'
 import { files } from './files'
-import { useState, useEffect, useRef, SetStateAction } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
 import Editor, { Monaco } from '@monaco-editor/react'
 import { compressToEncodedURIComponent, decompressFromEncodedURIComponent } from 'lz-string'
 import JestType from './jest-type'
-import JestAlt from './jest-type-alt'
-// let webContainerInstance: WebContainer
 
 const FILES = {
     'app.js': files.src.directory['app.js'].file.contents,
     'app.test.js': files.src.directory['app.test.js'].file.contents,
-    // 'types.d.ts': JestType,
 }
 
 export const App = () => {
     const [fileName, setFileName] = useState<keyof typeof FILES>('app.js')
     const file = FILES[fileName]
-    // const [fileValue, setFileValue] = useState(files.src.directory[INDEX_FILE].file.contents)
-    // const [testValue, setTestValue] = useState(files.src.directory[TEST_FILE].file.contents)
-    // const [currentTab, setCurrentTab] = useState<keyof typeof FILES>('app.js')
     const webContainerInstance = useRef<WebContainer>()
     const terminalRef = useRef<HTMLDivElement>(null)
     const [isContainerReady, setContainerReady] = useState(false)
     const editorRef = useRef(null)
+    const appRef = useRef<string>('')
+    const testRef = useRef<string>('')
 
     useEffect(() => {
         console.log('initial load thing...')
@@ -65,22 +61,21 @@ export const App = () => {
     }, [])
 
     useEffect(() => {
-        if (!isContainerReady) {
-            return
-        }
+        if (isContainerReady) {
+            const params = new URLSearchParams(window.location.search)
 
-        const params = new URLSearchParams(window.location.search)
-        if (params.has('file') || params.has('test')) {
-            handleFileInput(
-                'app.js',
-                decompressFromEncodedURIComponent(params.get('file') ?? '') ??
-                    '// Something went wrong parsing file contents from URL'
-            )
-            handleFileInput(
-                'app.test.js',
-                decompressFromEncodedURIComponent(params.get('test') ?? '') ??
-                    '// Something went wrong parsing test file contents from URL'
-            )
+            if (params.has('file') || params.has('test')) {
+                handleFileInput(
+                    'app.js',
+                    decompressFromEncodedURIComponent(params.get('file') ?? '') ??
+                        '// Something went wrong parsing file contents from URL'
+                )
+                handleFileInput(
+                    'app.test.js',
+                    decompressFromEncodedURIComponent(params.get('test') ?? '') ??
+                        '// Something went wrong parsing test file contents from URL'
+                )
+            }
         }
     }, [isContainerReady])
 
@@ -129,6 +124,11 @@ export const App = () => {
     }
 
     const handleFileInput = async (fileName: string, content: string) => {
+        if (fileName === 'app.js') {
+            appRef.current = content
+        } else {
+            testRef.current = content
+        }
         writeFile(`src/${fileName}`, content)
     }
 
@@ -142,64 +142,23 @@ export const App = () => {
 
     const handleEditorWillMount = (editor: any, monaco: Monaco) => {
         console.log('mounted...')
+
+        editorRef.current = editor
+
         monaco?.languages.typescript.javascriptDefaults.setEagerModelSync(true)
         monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions({
             noSemanticValidation: true,
             noSyntaxValidation: false,
         })
-
-        editorRef.current = editor
-        // editorRef.current = editor
         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
             target: monaco.languages.typescript.ScriptTarget.ES2016,
             allowNonTsExtensions: true,
-            // allowJs: true,
-            // module: 2,
             moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
             module: monaco.languages.typescript.ModuleKind.ESNext,
-            // checkJs: true,
-            // types: ['jest'],
         })
 
         // THIS WORKS
         monaco.editor.createModel(JestType, 'typescript', monaco.Uri.parse('./types.d.ts'))
-
-        // monaco.editor.createModel(
-        //     `export * from '@types/jest'`,
-        //     'typescript',
-        //     monaco.Uri.parse('./types.d.ts')
-        // )
-
-        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //     'declare const garrett: () => boolean;',
-        //     'types.d.ts'
-        // )
-
-        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //     `declare const garrett: () => boolean;`,
-        //     'types.d.ts'
-        // )
-
-        // monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //     `{
-        //               "compilerOptions": {
-        //                 "allowJs": true,
-        //                 "types": ["jest"]
-        //               }
-        //             }`,
-        //     'tsconfig.json'
-        // )
-
-        //         monaco.languages.typescript.javascriptDefaults.addExtraLib(
-        //             `{
-        //     "typeAcquisition": {
-        //         "include": [
-        //             "jest"
-        //         ]
-        //     }
-        // }`,
-        //             'jsconfig.json'
-        //         )
     }
 
     return (
@@ -207,7 +166,7 @@ export const App = () => {
             <nav className="flex items-center justify-between py-2 px-4">
                 <div className="">Jest Playground</div>
                 <button
-                    onClick={() => handleShare(FILES['app.js'], FILES['app.test.js'])}
+                    onClick={() => handleShare(appRef.current, testRef.current)}
                     className="bg-blue-500 hover:bg-blue-600 rounded px-2 py-1 text-white"
                 >
                     Share
@@ -308,63 +267,3 @@ export const App = () => {
         </main>
     )
 }
-
-// const FileEditor = ({
-//     value,
-//     onChange,
-//     isContainerReady,
-// }: {
-//     value: any
-//     onChange: any
-//     isContainerReady: boolean
-// }) => {
-//     // const editorRef = useRef(null)
-
-//     const handleEditorWillMount = (monaco: Monaco) => {
-//         console.log('mounted...')
-//         // editorRef.current = editor
-//         monaco.languages.typescript.javascriptDefaults.setCompilerOptions({
-//             target: monaco.languages.typescript.ScriptTarget.ES2016,
-//             allowNonTsExtensions: true,
-//             allowJs: true,
-//             module: 2,
-//         })
-//         //monaco.languages.typescript.javascriptDefaults.addExtraLib('@jest/types')
-//     }
-
-//     if (!isContainerReady) {
-//         return <div>Loading...</div>
-//     }
-//     return (
-//         <Editor
-//             defaultLanguage="typescript"
-//             value={value}
-//             onChange={onChange}
-//             theme="vs-dark"
-//             // path={file.name}
-//             options={{
-//                 minimap: {
-//                     enabled: false,
-//                 },
-//             }}
-//             className="h-100"
-//             beforeMount={handleEditorWillMount}
-//         />
-//     )
-// }
-
-// const TestEditor = ({ value }) => {
-//     return (
-//         <Editor
-//             language="javascript"
-//             value={value}
-//             onChange={(value = '') => console.log(value)}
-//             theme="vs-dark"
-//             options={{
-//                 minimap: {
-//                     enabled: false,
-//                 },
-//             }}
-//         />
-//     )
-// }
