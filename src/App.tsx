@@ -206,7 +206,7 @@ export const App = () => {
                             )
                         })}
                     </div>
-                    <div className="bg-red-100 flex-1">
+                    <div className="bg-[#193549] flex-1">
                         <div className="h-full">
                             <Editor
                                 defaultLanguage="typescript"
