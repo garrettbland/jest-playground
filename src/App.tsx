@@ -32,6 +32,11 @@ export const App = () => {
         const terminal = new Terminal({
             convertEol: true,
             cursorBlink: false,
+            fontFamily: 'Fira Code',
+            fontSize: 14.5,
+            lineHeight: 1.2,
+            tabStopWidth: 2,
+            letterSpacing: 0.6,
         })
         const fitAddon = new FitAddon()
 
@@ -143,6 +148,11 @@ export const App = () => {
     }
 
     const handleBeforeMount = (monaco: Monaco) => {
+        /**
+         * List of tokens
+         * https://github.com/microsoft/monaco-editor/issues/1631#issuecomment-555912216
+         */
+
         monaco.editor.defineTheme('cobalt2', {
             base: 'vs-dark',
             inherit: true,
@@ -287,8 +297,8 @@ export const App = () => {
                             /> */}
                     </div>
                 </div>
-                <div className="w-1/2">
-                    <div ref={terminalRef} className="h-screen bg-red-500" />
+                <div className="w-1/2 bg-black p-2">
+                    <div ref={terminalRef} className="h-screen font-fira" />
                 </div>
             </div>
         </main>
