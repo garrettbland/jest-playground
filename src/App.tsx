@@ -1,4 +1,5 @@
 // import './style.css'
+// import './styles/xterm.css'
 import 'xterm/css/xterm.css'
 import { WebContainer } from '@webcontainer/api'
 import { files } from './files'
@@ -32,11 +33,11 @@ export const App = () => {
         const terminal = new Terminal({
             convertEol: true,
             cursorBlink: false,
-            fontFamily: 'Fira Code',
+            // fontFamily: 'Fira Code',
             fontSize: 14.5,
             lineHeight: 1.2,
             tabStopWidth: 2,
-            letterSpacing: 0.6,
+            // letterSpacing: 0.6,
         })
         const fitAddon = new FitAddon()
 
@@ -49,6 +50,7 @@ export const App = () => {
 
         bootContainer()
             .then(() => {
+                setContainerReady(true)
                 return installDependencies(terminal)
             })
             .then((exitCode) => {
@@ -72,6 +74,8 @@ export const App = () => {
             const params = new URLSearchParams(window.location.search)
 
             if (params.has('file') || params.has('test')) {
+                window.alert('thing is ready and add files')
+
                 handleFileInput(
                     'app.js',
                     decompressFromEncodedURIComponent(params.get('file') ?? '') ??
@@ -100,7 +104,7 @@ export const App = () => {
         installProcess?.output.pipeTo(
             new WritableStream({
                 write(data) {
-                    console.log(data)
+                    console.log('TEST', data.toString())
                     terminal.write(data)
                 },
             })
@@ -187,7 +191,74 @@ export const App = () => {
     }
 
     return (
-        <main className="overflow-hidden h-screen w-screen">
+        <main className="flex flex-col h-screen overflow-hidden bg-slate-200">
+            <nav className="flex flex-row justify-between px-6 py-3 bg-gray-200">
+                <a>Jest Playground</a>
+                <button
+                    onClick={() =>
+                        handleShare(
+                            files.src.directory['app.js'].file.contents,
+                            files.src.directory['app.test.js'].file.contents
+                        )
+                    }
+                >
+                    Share
+                </button>
+            </nav>
+            <div className="flex flex-row space-x-6 p-6 flex-grow">
+                <div className="w-1/2 flex flex-col shadow-lg shadow-slate-400/60">
+                    <div className="space-x-2 bg-[#192949] rounded-t">
+                        {Object.entries(FILES).map(([name]) => {
+                            if (name === 'types.d.ts') return null
+                            return (
+                                <button
+                                    onClick={() => setFileName(name as any)}
+                                    className={`px-4 py-2 ${
+                                        fileName === name
+                                            ? 'text-white border-b border-b-2 border-blue-300'
+                                            : 'text-blue-100 opacity-60 hover:opacity-90'
+                                    }`}
+                                >
+                                    {name}
+                                </button>
+                            )
+                        })}
+                    </div>
+                    <Editor
+                        defaultLanguage="typescript"
+                        defaultValue={file}
+                        onChange={(value) => handleFileInput(fileName, value ?? '')}
+                        path={fileName}
+                        theme="cobalt2"
+                        options={{
+                            minimap: {
+                                enabled: false,
+                            },
+                            fontSize: 14.5,
+                            tabSize: 2,
+                            lineHeight: 2.1,
+                            letterSpacing: 0.6,
+                            scrollbar: {
+                                verticalScrollbarSize: 0,
+                            },
+                            fontLigatures: true,
+                            fontFamily: 'Fira Code',
+                        }}
+                        className={`rounded-b`}
+                        onMount={handleOnEditorMount}
+                        beforeMount={handleBeforeMount}
+                    />
+                </div>
+                <div
+                    ref={terminalRef}
+                    className="w-1/2 h-[100%] bg-black rounded overflow-hidden shadow-lg shadow-gray-600/60"
+                />
+            </div>
+        </main>
+    )
+
+    return (
+        <main className="h-screen w-screen">
             <nav className="flex items-center justify-between py-2 px-4">
                 <div className="">Jest Playground</div>
                 <button
@@ -301,6 +372,18 @@ export const App = () => {
                     <div ref={terminalRef} className="h-screen font-fira" />
                 </div>
             </div>
+            <article className="prose lg:prose-xl">
+                <h1>Garlic bread with cheese: What the science tells us</h1>
+                <p>
+                    For years parents have espoused the health benefits of eating garlic bread with
+                    cheese to their children, with the food earning such an iconic status in our
+                    culture that kids will often dress up as warm, cheesy loaf for Halloween.
+                </p>
+                <p>
+                    But a recent study shows that the celebrated appetizer may be linked to a series
+                    of rabies cases springing up around the country.
+                </p>
+            </article>
         </main>
     )
 }
