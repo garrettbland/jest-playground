@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-font-fira {
+.font-fira {
     font-family: 'Fira Code';
+}
+
+.monaco-editor,
+.overflow-guard {
+    @apply rounded-b;
 }

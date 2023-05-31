@@ -2,7 +2,7 @@
 // import './styles/xterm.css'
 import 'xterm/css/xterm.css'
 import { WebContainer } from '@webcontainer/api'
-import { files } from './files'
+import { files as systemFiles } from './files'
 import { useState, useEffect, useRef } from 'react'
 import { Terminal } from 'xterm'
 import { FitAddon } from 'xterm-addon-fit'
@@ -12,20 +12,54 @@ import JestType from './jest-type'
 import { tokenColors } from './cobalt-tokens.json'
 import { colors } from './cobalt-colors.json'
 
+/**
+ * Default file values
+ */
 const FILES = {
-    'app.js': files.src.directory['app.js'].file.contents,
-    'app.test.js': files.src.directory['app.test.js'].file.contents,
+    'app.js': systemFiles.src.directory['app.js'].file.contents,
+    'app.test.js': systemFiles.src.directory['app.test.js'].file.contents,
+}
+// const FILES = {
+//     'app.js': '// loading...',
+//     'app.test.js': '// loading...',
+// }
+
+const TAB_THEME = {
+    cobalt2: {
+        backgroundColor: 'bg-[#193549]',
+        activeTextColor: 'text-white',
+        textColor: 'text-blue-100',
+        underlineColor: 'border-blue-500',
+    },
+    'vs-dark': {
+        backgroundColor: 'bg-[#1E1E1E]',
+        activeTextColor: 'text-white',
+        textColor: 'text-gray-100',
+        underlineColor: 'border-blue-500',
+    },
+    light: {
+        backgroundColor: 'bg-[#FFFFFE]',
+        activeTextColor: 'text-blue-500',
+        textColor: 'text-gray-900',
+        underlineColor: 'border-blue-500',
+    },
 }
 
 export const App = () => {
     const [fileName, setFileName] = useState<keyof typeof FILES>('app.js')
-    const file = FILES[fileName]
+    const [files, setFiles] = useState(FILES)
+    const file = files[fileName]
     const webContainerInstance = useRef<WebContainer>()
     const terminalRef = useRef<HTMLDivElement>(null)
     const [isContainerReady, setContainerReady] = useState(false)
     const editorRef = useRef(null)
-    const appRef = useRef<string>('')
-    const testRef = useRef<string>('')
+    const [isEditorReady, setEditorReady] = useState(false)
+    const [shareText, setShareText] = useState('Share')
+    const [theme, setTheme] = useState<keyof typeof TAB_THEME>('cobalt2')
+    const currentTabTheme = TAB_THEME[theme]
+
+    // const appRef = useRef<string>('')
+    // const testRef = useRef<string>('')
 
     useEffect(() => {
         console.log('initial load thing...')
@@ -50,7 +84,6 @@ export const App = () => {
 
         bootContainer()
             .then(() => {
-                setContainerReady(true)
                 return installDependencies(terminal)
             })
             .then((exitCode) => {
@@ -70,30 +103,36 @@ export const App = () => {
     }, [])
 
     useEffect(() => {
+        console.log('TEST | container ready use effect...')
         if (isContainerReady) {
+            console.log('TEST | container is ready...')
             const params = new URLSearchParams(window.location.search)
 
             if (params.has('file') || params.has('test')) {
-                window.alert('thing is ready and add files')
-
-                handleFileInput(
-                    'app.js',
+                console.log('TEST | handle file input...')
+                const app =
                     decompressFromEncodedURIComponent(params.get('file') ?? '') ??
-                        '// Something went wrong parsing file contents from URL'
-                )
-                handleFileInput(
-                    'app.test.js',
+                    '// Something went wrong parsing file contents from URL'
+                const test =
                     decompressFromEncodedURIComponent(params.get('test') ?? '') ??
-                        '// Something went wrong parsing test file contents from URL'
-                )
+                    '// Something went wrong parsing test file contents from URL'
+                console.log(app)
+                setFiles({
+                    'app.js': app,
+                    'app.test.js': test,
+                })
+                setEditorReady(true)
+                handleFileInput('app.js', app)
+                handleFileInput('app.test.js', test)
+            } else {
+                setEditorReady(true)
             }
         }
     }, [isContainerReady])
 
     const bootContainer = async () => {
         webContainerInstance.current = await WebContainer.boot()
-        // setWebContainer(newContainer)
-        await webContainerInstance.current?.mount(files)
+        await webContainerInstance.current?.mount(systemFiles)
     }
 
     const installDependencies = async (terminal: Terminal): Promise<number | undefined> => {
@@ -104,7 +143,6 @@ export const App = () => {
         installProcess?.output.pipeTo(
             new WritableStream({
                 write(data) {
-                    console.log('TEST', data.toString())
                     terminal.write(data)
                 },
             })
@@ -124,31 +162,36 @@ export const App = () => {
                     // only doing this because currently not giving access to manually start tests
                     // from terminal
                     terminal.write(data.split('Watch Usage')[0])
-                    //terminal.write(data)
                 },
             })
         )
     }
 
     const writeFile = async (fileName: string, content: string) => {
+        console.log(`TEST | Writing ${fileName} with ${content}`)
         await webContainerInstance.current?.fs.writeFile(fileName, content)
     }
 
     const handleFileInput = async (fileName: string, content: string) => {
-        if (fileName === 'app.js') {
-            appRef.current = content
-        } else {
-            testRef.current = content
-        }
         writeFile(`src/${fileName}`, content)
     }
 
-    const handleShare = async (file: string, testFile: string) => {
-        const fileCode = compressToEncodedURIComponent(file)
-        const testCode = compressToEncodedURIComponent(testFile)
+    const handleShare = async () => {
+        const fileCode = compressToEncodedURIComponent(
+            (await webContainerInstance.current?.fs.readFile('src/app.js', 'utf8')) as string
+        )
+        const testCode = compressToEncodedURIComponent(
+            (await webContainerInstance.current?.fs.readFile('src/app.test.js', 'utf8')) as string
+        )
+
         window.history.pushState({}, '', `?file=${fileCode}&test=${testCode}`)
         await navigator.clipboard.writeText(window.location.href)
-        window.alert('copied URL to clipboard')
+
+        setShareText('Copied!')
+
+        setTimeout(() => {
+            setShareText('Share')
+        }, 1000)
     }
 
     const handleBeforeMount = (monaco: Monaco) => {
@@ -190,24 +233,47 @@ export const App = () => {
         monaco.editor.createModel(JestType, 'typescript', monaco.Uri.parse('./types.d.ts'))
     }
 
+    useEffect(() => {
+        console.log(`TEST | check and set local storage theme to ${theme}`)
+        const currentTheme = localStorage.getItem('theme')
+        if (currentTheme) {
+            /**
+             * Local storage theme exists
+             */
+            setTheme(currentTheme as any)
+        }
+    }, [theme])
+
     return (
         <main className="flex flex-col h-screen overflow-hidden bg-slate-200">
-            <nav className="flex flex-row justify-between px-6 py-3 bg-gray-200">
-                <a>Jest Playground</a>
-                <button
-                    onClick={() =>
-                        handleShare(
-                            files.src.directory['app.js'].file.contents,
-                            files.src.directory['app.test.js'].file.contents
-                        )
-                    }
-                >
-                    Share
-                </button>
+            <nav className="flex flex-row justify-between items-center px-6 py-2 border-b border-gray-400">
+                <div className="flex flex-row items-center space-x-4">
+                    <h1 className="font-fira text-lg font-bold">Jest Playground</h1>
+                    <select
+                        className="px-2 py-1 rounded border-gray-300 w-48"
+                        onChange={(e) => {
+                            localStorage.setItem('theme', e.target.value as any)
+                            setTheme(e.target.value as any)
+                        }}
+                        value={theme}
+                    >
+                        <option value="cobalt2">Cobalt2</option>
+                        <option value="vs-dark">VS Dark</option>
+                        <option value="light">Light</option>
+                    </select>
+                </div>
+                <div>
+                    <button
+                        className="bg-blue-700 px-3 py-1 rounded text-white font-fira hover:bg-blue-800"
+                        onClick={() => handleShare()}
+                    >
+                        {shareText}
+                    </button>
+                </div>
             </nav>
             <div className="flex flex-row space-x-6 p-6 flex-grow">
-                <div className="w-1/2 flex flex-col shadow-lg shadow-slate-400/60">
-                    <div className="space-x-2 bg-[#192949] rounded-t">
+                <div className={`w-1/2 flex flex-col ${currentTabTheme.backgroundColor} rounded`}>
+                    <div className={`space-x-2 ${currentTabTheme.backgroundColor} rounded-t`}>
                         {Object.entries(FILES).map(([name]) => {
                             if (name === 'types.d.ts') return null
                             return (
@@ -215,8 +281,8 @@ export const App = () => {
                                     onClick={() => setFileName(name as any)}
                                     className={`px-4 py-2 ${
                                         fileName === name
-                                            ? 'text-white border-b border-b-2 border-blue-300'
-                                            : 'text-blue-100 opacity-60 hover:opacity-90'
+                                            ? `${currentTabTheme.activeTextColor} border-b border-b-2 ${currentTabTheme.underlineColor}`
+                                            : `${currentTabTheme.textColor} opacity-60 hover:opacity-90`
                                     }`}
                                 >
                                     {name}
@@ -224,166 +290,46 @@ export const App = () => {
                             )
                         })}
                     </div>
-                    <Editor
-                        defaultLanguage="typescript"
-                        defaultValue={file}
-                        onChange={(value) => handleFileInput(fileName, value ?? '')}
-                        path={fileName}
-                        theme="cobalt2"
-                        options={{
-                            minimap: {
-                                enabled: false,
-                            },
-                            fontSize: 14.5,
-                            tabSize: 2,
-                            lineHeight: 2.1,
-                            letterSpacing: 0.6,
-                            scrollbar: {
-                                verticalScrollbarSize: 0,
-                            },
-                            fontLigatures: true,
-                            fontFamily: 'Fira Code',
-                        }}
-                        className={`rounded-b`}
-                        onMount={handleOnEditorMount}
-                        beforeMount={handleBeforeMount}
-                    />
-                </div>
-                <div
-                    ref={terminalRef}
-                    className="w-1/2 h-[100%] bg-black rounded overflow-hidden shadow-lg shadow-gray-600/60"
-                />
-            </div>
-        </main>
-    )
-
-    return (
-        <main className="h-screen w-screen">
-            <nav className="flex items-center justify-between py-2 px-4">
-                <div className="">Jest Playground</div>
-                <button
-                    onClick={() => handleShare(appRef.current, testRef.current)}
-                    className="bg-blue-500 hover:bg-blue-600 rounded px-2 py-1 text-white"
-                >
-                    Share
-                </button>
-            </nav>
-            <div className="flex flex-row space-x-4">
-                <div className="flex flex-col w-1/2 bg-gray-800">
-                    <div className="flex flex-row">
-                        {Object.entries(FILES).map(([name]) => {
-                            if (name === 'types.d.ts') return null
-                            return (
-                                <button
-                                    onClick={() => setFileName(name as any)}
-                                    className={`px-3 py-1 ${
-                                        fileName === name
-                                            ? 'bg-[#193549] text-blue-500 border-b border-blue-400 text-blue-50'
-                                            : 'text-blue-400'
-                                    }`}
-                                >
-                                    {name}
-                                </button>
-                            )
-                        })}
-                    </div>
-                    <div className="bg-[#193549] flex-1">
-                        <div className="h-full">
-                            <Editor
-                                defaultLanguage="typescript"
-                                defaultValue={file}
-                                onChange={(value) => handleFileInput(fileName, value ?? '')}
-                                path={fileName}
-                                theme="cobalt2"
-                                options={{
-                                    minimap: {
-                                        enabled: false,
-                                    },
-                                    fontSize: 14.5,
-                                    tabSize: 2,
-                                    lineHeight: 2.1,
-                                    letterSpacing: 0.6,
-                                    scrollbar: {
-                                        verticalScrollbarSize: 0,
-                                    },
-                                    fontLigatures: true,
-                                    fontFamily: 'Fira Code, monospace',
-
-                                    // rulers: [1],
-                                }}
-                                className={'h-100 bg-[#193549]'}
-                                onMount={handleOnEditorMount}
-                                beforeMount={handleBeforeMount}
-                            />
+                    {!isEditorReady && (
+                        <div
+                            className={`${currentTabTheme.textColor} font-fira h-full flex items-center justify-center`}
+                        >
+                            Loading...
                         </div>
-                        {/* <div className={currentTab === INDEX_FILE ? 'h-full' : 'hidden'}>
-                            <FileEditor
-                                value={fileValue}
-                                onChange={(content: any) =>
-                                    handleFileInput(INDEX_FILE, content, setFileValue)
-                                }
-                                isContainerReady={isContainerReady}
-                            />
-                        </div>
-                        <div className={currentTab === TEST_FILE ? 'h-full' : 'hidden'}>
-                            <FileEditor
-                                value={testValue}
-                                onChange={(content: any) =>
-                                    handleFileInput(TEST_FILE, content, setTestValue)
-                                }
-                                isContainerReady={isContainerReady}
-                            />
-                        </div> */}
-
-                        {/* <Editor
-                            language="javascript"
-                            value={currentTab === INDEX_FILE ? fileValue : testValue}
-                            onChange={(value = '') =>
-                                handleFileInput(
-                                    currentTab === INDEX_FILE ? INDEX_FILE : TEST_FILE,
-                                    value,
-                                    currentTab === INDEX_FILE ? setFileValue : setTestValue
-                                )
-                            }
-                            theme="vs-dark"
+                    )}
+                    {isEditorReady && (
+                        <Editor
+                            defaultLanguage="typescript"
+                            defaultValue={file}
+                            onChange={(value) => handleFileInput(fileName, value ?? '')}
+                            path={fileName}
+                            theme={theme}
                             options={{
                                 minimap: {
                                     enabled: false,
                                 },
+                                fontSize: 14.5,
+                                tabSize: 2,
+                                lineHeight: 2.1,
+                                letterSpacing: 0.6,
+                                scrollbar: {
+                                    verticalScrollbarSize: 0,
+                                },
+                                fontLigatures: true,
+                                fontFamily: 'Fira Code',
                             }}
-                        /> */}
-                        {/* <Editor
-                                language="javascript"
-                                value={testValue}
-                                onChange={(value = '') =>
-                                    handleFileInput(TEST_FILE, value, setTestValue)
-                                }
-                                theme="vs-dark"
-                                options={{
-                                    minimap: {
-                                        enabled: false,
-                                    },
-                                }}
-                                className={currentTab === TEST_FILE ? 'block' : 'hidden'}
-                            /> */}
-                    </div>
+                            className={`rounded-b shadow-inner`}
+                            onMount={handleOnEditorMount}
+                            beforeMount={handleBeforeMount}
+                            loading={<div className="text-white font-fira">Loading...</div>}
+                        />
+                    )}
                 </div>
-                <div className="w-1/2 bg-black p-2">
-                    <div ref={terminalRef} className="h-screen font-fira" />
-                </div>
+                <div
+                    ref={terminalRef}
+                    className="w-1/2 h-[100%] bg-black rounded overflow-hidden"
+                />
             </div>
-            <article className="prose lg:prose-xl">
-                <h1>Garlic bread with cheese: What the science tells us</h1>
-                <p>
-                    For years parents have espoused the health benefits of eating garlic bread with
-                    cheese to their children, with the food earning such an iconic status in our
-                    culture that kids will often dress up as warm, cheesy loaf for Halloween.
-                </p>
-                <p>
-                    But a recent study shows that the celebrated appetizer may be linked to a series
-                    of rabies cases springing up around the country.
-                </p>
-            </article>
         </main>
     )
 }
